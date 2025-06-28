@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import {
   Html5Qrcode,
   Html5QrcodeSupportedFormats,
-  Html5QrcodeScannerState,
 } from "html5-qrcode";
 import "./App.css";
 
 export default function App() {
   const qrRef = useRef(null);
   const scannerRef = useRef(null);
+  const [successMessage, setSuccessMessage] = useState("");
   const [deviceInfo, setDeviceInfo] = useState(null);
   const [scanError, setScanError] = useState("");
 
@@ -19,11 +19,12 @@ export default function App() {
     Html5Qrcode.getCameras()
       .then((devices) => {
         if (devices && devices.length) {
-          const cameraId = devices[0].id;
+          // const cameraId = devices[0].id;
+          const cameraConfig = { facingMode: { exact: "environment" } };
   
           html5QrCode
             .start(
-              cameraId,
+              cameraConfig,
               {
                 fps: 10,
                 qrbox: { width: 250, height: 250 },
@@ -33,6 +34,7 @@ export default function App() {
                 ],
               },
               (decodedText) => {
+                setSuccessMessage("QR code detected successfully");
                 const deviceId = decodedText.split(",")[0];
                 html5QrCode.stop().then(() => {
                   fetchDeviceData(deviceId);
@@ -94,6 +96,8 @@ export default function App() {
       {scanError && <p className="no-data">{scanError}</p>}
 
       <div id="qr-reader" style={{ width: "100%" }} ref={qrRef} />
+
+      {successMessage && <p className="success">{successMessage}</p>}
 
       {deviceInfo && (
         <div className="device-info">
