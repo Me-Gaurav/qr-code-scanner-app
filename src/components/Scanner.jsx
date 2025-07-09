@@ -1,9 +1,16 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Html5Qrcode, Html5QrcodeScannerState } from "html5-qrcode";
+import {
+  Html5Qrcode,
+  Html5QrcodeScannerState,
+  Html5QrcodeSupportedFormats,
+} from "html5-qrcode";
 
 const QrScanner = () => {
   const scannerRef = useRef(null);
   const [scannedResult, setScannedResult] = useState(null);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [scanError, setScanError] = useState("");
+  const [deviceInfo, setDeviceInfo] = useState(null);
   const [isCameraRunning, setIsCameraRunning] = useState(false);
   const [isLoadingCamera, setIsLoadingCamera] = useState(false);
   const qrRegionId = "qr-reader";
@@ -11,6 +18,7 @@ const QrScanner = () => {
   const startScanning = async () => {
     try {
       setIsLoadingCamera(true);
+      setScanError("");
 
       if (!scannerRef.current) {
         scannerRef.current = new Html5Qrcode(qrRegionId);
@@ -18,31 +26,39 @@ const QrScanner = () => {
 
       if (scannerRef.current.getState() === Html5QrcodeScannerState.NOT_STARTED) {
         const devices = await Html5Qrcode.getCameras();
-        if (devices && devices.length > 0) {
+        if (devices.length > 0) {
           await scannerRef.current.start(
-            { facingMode: "environment" },
+            { facingMode: { exact: "environment" } },
             {
-              fps: 15, // higher fps = faster scan
-              qrbox: (viewportWidth, viewportHeight) => {
-                const minEdge = Math.min(viewportWidth, viewportHeight);
-                return { width: minEdge * 0.8, height: minEdge * 0.8 };
-              },
-              disableFlip: false,
+              fps: 10,
+              qrbox: { width: 250, height: 250 },
+              formatsToSupport: [
+                Html5QrcodeSupportedFormats.QR_CODE,
+                Html5QrcodeSupportedFormats.DATA_MATRIX,
+              ],
               aspectRatio: 1.0,
+              disableFlip: false,
             },
-            (decodedText) => {
+            async (decodedText) => {
+              setSuccessMessage("✅ QR code detected successfully");
               setScannedResult(decodedText);
-              stopScanning();
+              const deviceId = decodedText.split(",")[0];
+              await stopScanning();
+              fetchDeviceData(deviceId);
             },
-            () => {} // optional error callback
+            (err) => {
+              console.warn("Scan error:", err);
+              setScanError("Scan error occurred.");
+            }
           );
           setIsCameraRunning(true);
         } else {
-          alert("No camera found.");
+          setScanError("No camera found.");
         }
       }
     } catch (error) {
       console.error("Error starting scanner:", error);
+      setScanError("Unable to access camera.");
     } finally {
       setIsLoadingCamera(false);
     }
@@ -63,6 +79,22 @@ const QrScanner = () => {
     }
   };
 
+  const fetchDeviceData = async (deviceId) => {
+    const token = sessionStorage.getItem("qrToken");
+    try {
+      const res = await fetch("https://sml-qr-scanning-psi.vercel.app/api/get-device-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId, token }),
+      });
+      const data = await res.json();
+      setDeviceInfo(data[0] || null);
+    } catch (err) {
+      console.error("Fetch error:", err);
+      setDeviceInfo(null);
+    }
+  };
+
   useEffect(() => {
     scannerRef.current = new Html5Qrcode(qrRegionId);
     return () => {
@@ -72,8 +104,10 @@ const QrScanner = () => {
 
   return (
     <div className="scanner-container">
-      <h2 className="title">QR Code Scanner</h2>
+      <h2 className="title">QR / Data Matrix Scanner</h2>
+      {scanError && <p style={{ color: "red" }}>{scanError}</p>}
       <div id={qrRegionId} className="qr-video" />
+
       <div className="scanner-controls">
         {!isCameraRunning && !scannedResult && (
           <button
@@ -89,26 +123,40 @@ const QrScanner = () => {
             Stop Scanning
           </button>
         )}
+        {successMessage && <p style={{ color: "green" }}>{successMessage}</p>}
+
         {scannedResult && (
           <>
-            <p style={{ color: "green" }}>✅ Scanned: {scannedResult}</p>
             <button
               onClick={() => {
                 setScannedResult(null);
+                setSuccessMessage("");
+                setDeviceInfo(null);
                 startScanning();
               }}
               style={buttonStyle}
             >
-              Scan Another QR
+              Scan Another
             </button>
           </>
         )}
       </div>
+
+      {deviceInfo && (
+        <div className="device-info">
+          <h3>Device Information</h3>
+          <p><strong>Device ID:</strong> {deviceInfo.Name}</p>
+          <p><strong>Action Needed:</strong> {deviceInfo.Action_Needed__c}</p>
+          <p><strong>Battery Voltage:</strong> {deviceInfo.Battery_Voltage__c}</p>
+          <p><strong>Estimated Battery:</strong> {deviceInfo.est_Batterycalculate__c}</p>
+          <p><strong>Last Connected:</strong> {new Date(deviceInfo.Last_Connected__c).toLocaleString()}</p>
+        </div>
+      )}
     </div>
   );
 };
 
-// 👇 Mobile responsive styles
+// Styles
 const buttonStyle = {
   padding: "10px 20px",
   fontSize: "16px",
@@ -146,6 +194,17 @@ style.innerHTML = `
 
   .scanner-controls {
     margin-top: 1rem;
+  }
+
+  .device-info {
+    margin-top: 1rem;
+    text-align: left;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 1rem;
+    background: #f3f3f3;
+    border-radius: 8px;
   }
 
   @media (max-width: 600px) {
