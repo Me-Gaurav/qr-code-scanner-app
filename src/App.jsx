@@ -11,21 +11,55 @@ export default function App() {
   const [successMessage, setSuccessMessage] = useState("");
   const [deviceInfo, setDeviceInfo] = useState(null);
   const [scanError, setScanError] = useState("");
+  const [isScanning, setIsScanning] = useState(false);
 
   useEffect(() => {
-    const html5QrCode = new Html5Qrcode("qr-reader");
-    scannerRef.current = html5QrCode;
+    scannerRef.current = new Html5Qrcode("qr-reader");
 
+    return () => {
+      if (scannerRef.current) {
+        if (isScanning) {
+          scannerRef.current
+            .stop()
+            .catch(() => { })
+            .finally(() => scannerRef.current.clear());
+        } else {
+          scannerRef.current.clear();
+        }
+      }
+    };
+  }, []);
+
+  const stopScan = () => {
+    setDeviceInfo(null)
+    if (scannerRef.current && isScanning) {
+      return scannerRef.current
+        .stop()
+        .then(() => {
+          scannerRef.current.clear();
+          setIsScanning(false);
+        })
+        .catch((e) => {
+          console.warn("Stop error:", e);
+          setIsScanning(false);
+        });
+    } else {
+      return Promise.resolve();
+    }
+  };
+
+  const startScan = () => {
     Html5Qrcode.getCameras()
       .then((devices) => {
         if (devices && devices.length) {
-          // const cameraId = devices[0].id;
-          const cameraConfig = devices.find((d) => d.label.toLowerCase().includes("back"))
-            ? { deviceId: { exact: devices.find((d) => d.label.toLowerCase().includes("back")).id } }
+          const backCam = devices.find((d) =>
+            d.label.toLowerCase().includes("back")
+          );
+          const cameraConfig = backCam
+            ? { deviceId: { exact: backCam.id } }
             : { facingMode: "environment" };
-          // const cameraConfig = { facingMode: { exact: "environment" } };
 
-          html5QrCode
+          scannerRef.current
             .start(
               cameraConfig,
               {
@@ -38,78 +72,40 @@ export default function App() {
               },
               (decodedText) => {
                 setSuccessMessage("QR code detected successfully");
-                const deviceId = decodedText.split(",")[0];
-                html5QrCode.stop().then(() => {
-                  fetchDeviceData(deviceId);
-                });
+                setDeviceInfo(decodedText);
               },
-              (err) => {
-                console.warn("Scan error:", err);
-              }
             )
-            .catch((err) => {
-              console.error("Camera start failed:", err);
+            .then(() => {
+              setIsScanning(true);
+              setScanError("");
+            })
+            .catch(() => {
               setScanError("Unable to access camera.");
+              setIsScanning(false);
             });
         }
       })
-      .catch((err) => {
-        console.error("Camera error:", err);
+      .catch(() => {
         setScanError("No camera found or permission denied.");
       });
-
-    return () => {
-      const scanner = scannerRef.current;
-      if (scanner) {
-        try {
-          const stopPromise = scanner.stop();
-          if (stopPromise && typeof stopPromise.then === "function") {
-            stopPromise
-              .then(() => scanner.clear && scanner.clear())
-              .catch((e) => console.warn("Stop error:", e));
-          } else {
-            scanner.clear && scanner.clear();
-          }
-        } catch (e) {
-          console.warn("Cleanup error:", e);
-        }
-      }
-    };
-  }, []);
-
-  function fetchDeviceData(deviceId) {
-    const token = sessionStorage.getItem("qrToken");
-
-    fetch("https://sml-qr-scanning-psi.vercel.app/api/get-device-data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ deviceId, token }),
-    })
-      .then((res) => res.json())
-      .then((data) => setDeviceInfo(data[0] || null))
-      .catch((err) => {
-        console.error("Fetch error:", err);
-        setDeviceInfo(null);
-      });
-  }
+  };
 
   return (
     <div className="container">
-      <h2>Data Matrix + QR Scanner</h2>
+      <h2>Latest QR Scanner</h2>
       {scanError && <p className="no-data">{scanError}</p>}
 
       <div id="qr-reader" style={{ width: "100%" }} ref={qrRef} />
 
-      {successMessage && <p className="success">{successMessage}</p>}
+      <button onClick={isScanning ? stopScan : startScan} className="scan-btn">
+        {isScanning ? "Stop Scan" : "Start Scan"}
+      </button>
 
       {deviceInfo && (
         <div className="device-info">
-          <h3>Device Information</h3>
-          <p><strong>Device ID:</strong> {deviceInfo.Name}</p>
-          <p><strong>Action Needed:</strong> {deviceInfo.Action_Needed__c}</p>
-          <p><strong>Battery Voltage:</strong> {deviceInfo.Battery_Voltage__c}</p>
-          <p><strong>Estimated Battery:</strong> {deviceInfo.est_Batterycalculate__c}</p>
-          <p><strong>Last Connected:</strong> {new Date(deviceInfo.Last_Connected__c).toLocaleString()}</p>
+          {successMessage && <p className="success">{successMessage}</p>}
+          <h4>Device Information</h4>
+          <p>{deviceInfo}</p>
         </div>
       )}
     </div>

@@ -3,6 +3,10 @@
   margin: 40px auto;
   padding: 20px;
   font-family: Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 .section {
@@ -31,9 +35,23 @@
 }
 
 .device-info {
+  text-align: center;
   margin-top: 20px;
   background: #f5f5f5;
-  padding: 15px;
+  padding: 16px 32px;
   border-radius: 8px;
 }
 
+.success{
+  color: rgb(0, 159, 0);
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.scan-btn {
+  width: 60%;
+  margin-top: 16px;
+  padding: 10px 16px;
+  font-size: 16px;
+  cursor: pointer;
+}
