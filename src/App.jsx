@@ -30,8 +30,13 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (deviceInfo) {
+      stopScan()
+    }
+  }, [deviceInfo])
+
   const stopScan = () => {
-    setDeviceInfo(null)
     if (scannerRef.current && isScanning) {
       return scannerRef.current
         .stop()
@@ -49,6 +54,8 @@ export default function App() {
   };
 
   const startScan = () => {
+    setDeviceInfo(null)
+
     Html5Qrcode.getCameras()
       .then((devices) => {
         if (devices && devices.length) {
