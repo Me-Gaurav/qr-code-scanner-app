@@ -32,7 +32,7 @@ export default function App() {
 
   useEffect(() => {
     if (deviceInfo) {
-      stopScan()
+      setTimeout(stopScan, 500); // Delay gives time to finish reading QR properly
     }
   }, [deviceInfo])
 
@@ -62,9 +62,22 @@ export default function App() {
           const backCam = devices.find((d) =>
             d.label.toLowerCase().includes("back")
           );
+          // const cameraConfig = backCam
+          //   ? { deviceId: { exact: backCam.id } }
+          //   : { facingMode: "environment" };
           const cameraConfig = backCam
-            ? { deviceId: { exact: backCam.id } }
-            : { facingMode: "environment" };
+            ? {
+              videoConstraints: {
+                deviceId: { exact: backCam.id },
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+              }
+            }
+            : {
+              facingMode: "environment",
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            };
 
           scannerRef.current
             .start(
