@@ -59,12 +59,22 @@ export default function App() {
     Html5Qrcode.getCameras()
       .then((devices) => {
         if (devices && devices.length) {
-          const backCam = devices.find((d) =>
-            d.label.toLowerCase().includes("back")
-          );
-          const cameraConfig = backCam
-            ? { deviceId: { exact: backCam.id } }
+          // Get all back-facing cameras
+          const backCameras = devices.filter((d) => d.label.toLowerCase().includes("back"));
+
+          // Prefer wide or main camera (exclude ultra-wide if possible)
+          const preferredCamera = backCameras.find((d) =>
+            !d.label.toLowerCase().includes("ultra")
+          ) || backCameras[0]; // fallback if none found
+
+          const cameraConfig = preferredCamera
+            ? { deviceId: { exact: preferredCamera.id } }
             : { facingMode: "environment" };
+          // const backCam = devices.find((d) => d.label.toLowerCase().includes("back"));
+
+          // const cameraConfig = backCam
+          //   ? { deviceId: { exact: backCam.id } }
+          //   : { facingMode: "environment" };
           scannerRef.current
             .start(
               cameraConfig,
@@ -98,7 +108,7 @@ export default function App() {
 
   return (
     <div className="container">
-      <h2>Latest QR Scanner</h2>
+      <h2>Latest QR Scanner - 2</h2>
       {scanError && <p className="no-data">{scanError}</p>}
 
       <div id="qr-reader" style={{ width: "100%" }} ref={qrRef} />
