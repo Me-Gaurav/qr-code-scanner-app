@@ -6,15 +6,15 @@ import {
 import "./App.css";
 
 export default function App() {
-  const qrRef = useRef(null);
-  const scannerRef = useRef(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [deviceInfo, setDeviceInfo] = useState(null);
   const [scanError, setScanError] = useState("");
   const [isScanning, setIsScanning] = useState(false);
-  const [data, setData] = useState({})
   const [availableCameras, setAvailableCameras] = useState([]);
   const [selectedCameraId, setSelectedCameraId] = useState("");
+
+  const qrRef = useRef(null);
+  const scannerRef = useRef(null);
 
   useEffect(() => {
     scannerRef.current = new Html5Qrcode("qr-reader");
@@ -68,17 +68,52 @@ export default function App() {
       .then((devices) => {
         if (devices && devices.length) {
           setAvailableCameras(devices);
-          
-          const selectedCamera = devices.find((d) => d.id === selectedCameraId);
 
-          const backCameras = devices.filter((d) => d.label.toLowerCase().includes("back"));
+          // const selectedCamera = devices.find((d) => d.id === selectedCameraId);
 
-          const preferredCamera = selectedCamera || backCameras.find((d) =>
-            !d.label.toLowerCase().includes("ultra")
-          ) || backCameras[0];
+          // const backCameras = devices.filter((d) => d.label.toLowerCase().includes("back"));
 
-          const cameraConfig = preferredCamera
-            ? { deviceId: { exact: preferredCamera.id } }
+          // const preferredCamera = selectedCamera || backCameras.find((d) =>
+          //   !d.label.toLowerCase().includes("ultra")
+          // ) || backCameras[0];
+
+          // const cameraConfig = preferredCamera
+          //   ? { deviceId: { exact: preferredCamera.id } }
+          //   : { facingMode: "environment" };
+
+          // const scanOptions = {
+          //   fps: 10,
+          //   qrbox: { width: 250, height: 250 },
+          //   formatsToSupport: [
+          //     Html5QrcodeSupportedFormats.QR_CODE,
+          //     Html5QrcodeSupportedFormats.DATA_MATRIX,
+          //   ],
+          // };
+
+          const ultraWideCam = devices.find((d) =>
+            d.label.toLowerCase().includes("ultra")
+          );
+
+          const backCameras = devices.filter((d) =>
+            d.label.toLowerCase().includes("back")
+          );
+
+          const fallbackCamera = backCameras[0] || devices[0];
+
+          // Auto-select logic (only if user hasn't manually selected)
+          if (!selectedCameraId) {
+            if (ultraWideCam) {
+              setSelectedCameraId(ultraWideCam.id);
+            } else if (fallbackCamera) {
+              setSelectedCameraId(fallbackCamera.id);
+            }
+          }
+
+          // Re-select selected camera from updated list
+          const selectedCamera = devices.find((d) => d.id === (ultraWideCam?.id || fallbackCamera?.id || selectedCameraId));
+
+          const cameraConfig = selectedCamera
+            ? { deviceId: { exact: selectedCamera.id } }
             : { facingMode: "environment" };
 
           const scanOptions = {
@@ -89,11 +124,6 @@ export default function App() {
               Html5QrcodeSupportedFormats.DATA_MATRIX,
             ],
           };
-
-          setData({
-            backCameras: backCameras,
-            preferredCamera: preferredCamera,
-          })
 
           scannerRef.current
             .start(
@@ -144,10 +174,6 @@ export default function App() {
       <button onClick={isScanning ? stopScan : startScan} className="scan-btn">
         {isScanning ? "Stop Scan" : "Start Scan"}
       </button>
-
-      <p style={{ width: 100 }}>{JSON.stringify(data.backCameras)}</p> <br />
-      <p style={{ width: 100 }}>{JSON.stringify(data.preferredCamera)}</p> <br />
-      <p style={{ width: 100 }}>{JSON.stringify(data.backCameras)}</p>
 
       {deviceInfo && (
         <div className="device-info">
