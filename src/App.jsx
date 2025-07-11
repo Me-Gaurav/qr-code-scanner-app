@@ -71,6 +71,7 @@ export default function App() {
                 deviceId: { exact: backCam.id },
                 width: { ideal: 1280 },
                 height: { ideal: 720 },
+                advanced: [{ focusMode: "continuous" }]
               }
             }
             : {
