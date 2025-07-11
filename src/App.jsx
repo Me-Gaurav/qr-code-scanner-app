@@ -12,6 +12,7 @@ export default function App() {
   const [deviceInfo, setDeviceInfo] = useState(null);
   const [scanError, setScanError] = useState("");
   const [isScanning, setIsScanning] = useState(false);
+  const [data, setData] = useState({})
 
   useEffect(() => {
     scannerRef.current = new Html5Qrcode("qr-reader");
@@ -70,6 +71,12 @@ export default function App() {
           const cameraConfig = preferredCamera
             ? { deviceId: { exact: preferredCamera.id } }
             : { facingMode: "environment" };
+
+          setData({
+            backCameras: backCameras,
+            preferredCamera: preferredCamera,
+            cameraConfig: cameraConfig
+          })
           // const backCam = devices.find((d) => d.label.toLowerCase().includes("back"));
 
           // const cameraConfig = backCam
@@ -116,6 +123,10 @@ export default function App() {
       <button onClick={isScanning ? stopScan : startScan} className="scan-btn">
         {isScanning ? "Stop Scan" : "Start Scan"}
       </button>
+
+      <p>
+        {JSON.stringify(data)}
+      </p>
 
       {deviceInfo && (
         <div className="device-info">
