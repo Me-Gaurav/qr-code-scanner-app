@@ -129,7 +129,7 @@ export default function App() {
         {isScanning ? "Stop Scan" : "Start Scan"}
       </button>
 
-      <p>
+      <p style={{width: 100}}>
         {JSON.stringify(data)}
       </p>
 
