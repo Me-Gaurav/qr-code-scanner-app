@@ -58,9 +58,9 @@ export default function App() {
     setDeviceInfo(null)
 
     navigator.mediaDevices.getUserMedia({ video: true })
-    .then((stream) => {
-      stream.getTracks().forEach(track => track.stop()); // close preview
-    })
+      .then((stream) => {
+        stream.getTracks().forEach(track => track.stop()); // close preview
+      })
 
     Html5Qrcode.getCameras()
       .then((devices) => {
@@ -77,6 +77,15 @@ export default function App() {
             ? { deviceId: { exact: preferredCamera.id } }
             : { facingMode: "environment" };
 
+          const scanOptions = {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            formatsToSupport: [
+              Html5QrcodeSupportedFormats.QR_CODE,
+              Html5QrcodeSupportedFormats.DATA_MATRIX,
+            ],
+          };
+
           setData({
             backCameras: backCameras,
             preferredCamera: preferredCamera,
@@ -90,14 +99,15 @@ export default function App() {
           scannerRef.current
             .start(
               cameraConfig,
-              {
-                fps: 10,
-                qrbox: { width: 250, height: 250 },
-                formatsToSupport: [
-                  Html5QrcodeSupportedFormats.QR_CODE,
-                  Html5QrcodeSupportedFormats.DATA_MATRIX,
-                ],
-              },
+              scanOptions,
+              // {
+              //   fps: 10,
+              //   qrbox: { width: 250, height: 250 },
+              //   formatsToSupport: [
+              //     Html5QrcodeSupportedFormats.QR_CODE,
+              //     Html5QrcodeSupportedFormats.DATA_MATRIX,
+              //   ],
+              // },
               (decodedText) => {
                 setSuccessMessage("QR code detected successfully");
                 setDeviceInfo(decodedText);
@@ -129,7 +139,7 @@ export default function App() {
         {isScanning ? "Stop Scan" : "Start Scan"}
       </button>
 
-      <p style={{width: 100}}>
+      <p style={{ width: 100 }}>
         {JSON.stringify(data)}
       </p>
 
