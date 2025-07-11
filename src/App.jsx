@@ -32,7 +32,7 @@ export default function App() {
 
   useEffect(() => {
     if (deviceInfo) {
-      setTimeout(stopScan, 500); // Delay gives time to finish reading QR properly
+      stopScan();
     }
   }, [deviceInfo])
 
