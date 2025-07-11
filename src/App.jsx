@@ -13,6 +13,8 @@ export default function App() {
   const [scanError, setScanError] = useState("");
   const [isScanning, setIsScanning] = useState(false);
   const [data, setData] = useState({})
+  const [availableCameras, setAvailableCameras] = useState([]);
+  const [selectedCameraId, setSelectedCameraId] = useState("");
 
   useEffect(() => {
     scannerRef.current = new Html5Qrcode("qr-reader");
@@ -65,13 +67,15 @@ export default function App() {
     Html5Qrcode.getCameras()
       .then((devices) => {
         if (devices && devices.length) {
-          // Get all back-facing cameras
+          setAvailableCameras(devices);
+          
+          const selectedCamera = devices.find((d) => d.id === selectedCameraId);
+
           const backCameras = devices.filter((d) => d.label.toLowerCase().includes("back"));
 
-          // Prefer wide or main camera (exclude ultra-wide if possible)
-          const preferredCamera = backCameras.find((d) =>
+          const preferredCamera = selectedCamera || backCameras.find((d) =>
             !d.label.toLowerCase().includes("ultra")
-          ) || backCameras[0]; // fallback if none found
+          ) || backCameras[0];
 
           const cameraConfig = preferredCamera
             ? { deviceId: { exact: preferredCamera.id } }
@@ -89,25 +93,12 @@ export default function App() {
           setData({
             backCameras: backCameras,
             preferredCamera: preferredCamera,
-            cameraConfig: cameraConfig
           })
-          // const backCam = devices.find((d) => d.label.toLowerCase().includes("back"));
 
-          // const cameraConfig = backCam
-          //   ? { deviceId: { exact: backCam.id } }
-          //   : { facingMode: "environment" };
           scannerRef.current
             .start(
               cameraConfig,
               scanOptions,
-              // {
-              //   fps: 10,
-              //   qrbox: { width: 250, height: 250 },
-              //   formatsToSupport: [
-              //     Html5QrcodeSupportedFormats.QR_CODE,
-              //     Html5QrcodeSupportedFormats.DATA_MATRIX,
-              //   ],
-              // },
               (decodedText) => {
                 setSuccessMessage("QR code detected successfully");
                 setDeviceInfo(decodedText);
@@ -135,13 +126,28 @@ export default function App() {
 
       <div id="qr-reader" style={{ width: "100%" }} ref={qrRef} />
 
+      {availableCameras.length > 0 && (
+        <select
+          value={selectedCameraId}
+          onChange={(e) => setSelectedCameraId(e.target.value)}
+          className="camera-dropdown"
+        >
+          <option value="">Auto-select (Recommended)</option>
+          {availableCameras.map((cam) => (
+            <option key={cam.id} value={cam.id}>
+              {cam.label}
+            </option>
+          ))}
+        </select>
+      )}
+
       <button onClick={isScanning ? stopScan : startScan} className="scan-btn">
         {isScanning ? "Stop Scan" : "Start Scan"}
       </button>
 
-      <p style={{ width: 100 }}>
-        {JSON.stringify(data)}
-      </p>
+      <p style={{ width: 100 }}>{JSON.stringify(data.backCameras)}</p> <br />
+      <p style={{ width: 100 }}>{JSON.stringify(data.preferredCamera)}</p> <br />
+      <p style={{ width: 100 }}>{JSON.stringify(data.backCameras)}</p>
 
       {deviceInfo && (
         <div className="device-info">
