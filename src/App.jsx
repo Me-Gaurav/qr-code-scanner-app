@@ -57,6 +57,11 @@ export default function App() {
   const startScan = () => {
     setDeviceInfo(null)
 
+    navigator.mediaDevices.getUserMedia({ video: true })
+    .then((stream) => {
+      stream.getTracks().forEach(track => track.stop()); // close preview
+    })
+
     Html5Qrcode.getCameras()
       .then((devices) => {
         if (devices && devices.length) {
