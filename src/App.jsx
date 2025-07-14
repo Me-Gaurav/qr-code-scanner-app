@@ -19,6 +19,17 @@ export default function App() {
   useEffect(() => {
     scannerRef.current = new Html5Qrcode("qr-reader");
 
+    const qrToken = sessionStorage.getItem("qrToken");
+    const tokenExpiry = parseInt(sessionStorage.getItem("tokenExpiry"), 10);
+    const currentTime = Date.now();
+
+    if (!qrToken || isNaN(tokenExpiry) || currentTime > tokenExpiry) {
+      console.info("Fetching new token from server...");
+      getAccessToken();
+    } else {
+      console.info("Using valid cached token");
+    }
+
     return () => {
       if (scannerRef.current) {
         if (isScanning) {
@@ -32,6 +43,33 @@ export default function App() {
       }
     };
   }, []);
+
+  function getAccessToken() {
+  const url = "https://sml-qr-scanning-psi.vercel.app/get-token"; // Proxy server URL for getting token
+
+  // Send a POST request to get the access token
+  fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.access_token) {
+        // Save token and expiry time in localStorage
+        const tokenExpiry = new Date().getTime() + 3600 * 1000;
+        sessionStorage.setItem("qrToken", data.access_token);
+        sessionStorage.setItem("tokenExpiry", tokenExpiry);
+      } else {
+        alert("Failed to authenticate.");
+      }
+    })
+    .catch((error) => {
+      console.error("Error:", error);
+      alert("An error occurred while trying to authenticate.");
+    });
+}
 
   useEffect(() => {
     if (deviceInfo) {
@@ -55,6 +93,26 @@ export default function App() {
       return Promise.resolve();
     }
   };
+
+  function fetchDataFromApex(deviceId) {
+  const endpoint = `https://smartlogisticsinc--fullcopy.sandbox.my.salesforce-sites.com/services/apexrest/qrScanner/?deviceId=${deviceId}`;
+  const qrToken = sessionStorage.getItem("qrToken");
+
+  fetch(endpoint, {
+    method: "GET",
+    headers: {
+      Authorization: "Bearer " + qrToken, // Include the token in the request header
+    },
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      setDeviceInfo(data); // Display the data retrieved from Apex
+    })
+    .catch((error) => {
+      console.error("Error:", error);
+    });
+}
+
 
   const startScan = () => {
     setDeviceInfo(null)
@@ -131,7 +189,8 @@ export default function App() {
               scanOptions,
               (decodedText) => {
                 setSuccessMessage("QR code detected successfully");
-                setDeviceInfo(decodedText);
+                const deviceId = decodedText.split(",")[0]; // Extract the deviceId from the QR code text
+                fetchDataFromApex(deviceId);
               },
             )
             .then(() => {
@@ -151,7 +210,7 @@ export default function App() {
 
   return (
     <div className="container">
-      <h2>Latest QR Scanner - 2</h2>
+      <h2>QR Scanner - 2</h2>
       {scanError && <p className="no-data">{scanError}</p>}
 
       <div id="qr-reader" style={{ width: "100%" }} ref={qrRef} />
@@ -179,7 +238,11 @@ export default function App() {
         <div className="device-info">
           {successMessage && <p className="success">{successMessage}</p>}
           <h4>Device Information</h4>
-          <p>{deviceInfo}</p>
+          <p><strong>Device ID:</strong> ${deviceInfo[0].Name}</p>
+          <p><strong>Action Needed:</strong> ${deviceInfo[0].Action_Needed__c}</p>
+          <p><strong>Battery Voltage:</strong> ${deviceInfo[0].Battery_Voltage__c}</p>
+          <p><strong>Estimated Battery:</strong> ${deviceInfo[0].est_Batterycalculate__c}</p>
+          <p><strong>Last Connected (CST/CDT):</strong> ${deviceInfo[0].Last_Connected__c}</p>
         </div>
       )}
     </div>
